@@ -1,0 +1,19 @@
+{
+  "name": "jsnoid",
+  "version": "0.1",
+  "description": "Lazy javascript framework for Express web development",
+  "main": "jsnoid.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arkanoid/jsnoid.git"
+  },
+  "author": "André Bertelli Araújo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arkanoid/jsnoid/issues"
+  },
+  "homepage": "https://github.com/arkanoid/jsnoid#readme"
+}
