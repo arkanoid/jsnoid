@@ -1,6 +1,6 @@
 {
   "name": "jsnoid",
-  "version": "0.1",
+  "version": "0.2",
   "description": "Lazy javascript framework for Express web development",
 	"main": "index.js",
 	"type": "module",
