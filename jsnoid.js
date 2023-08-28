@@ -4,6 +4,7 @@ const dev = (process.env.NODE_ENV === 'development');
 
 import { stat, realpath, mkdir, open, write, close } from 'node:fs';
 
+import jsnoid from 'jsnoid';
 
 
 // Checks if ./bin exists
@@ -16,6 +17,8 @@ function alreadyBin_pwd(err, p) {
 		console.error(err);
 	else {
 		console.log('Running at:', p);
+		console.log('If you\'re running out of the correct directory (your project), exit now and run again in the right directory.');
+		//ask('Continue');
 		console.log('Checking for a ./bin directory...');
 		stat('./bin', alreadyBin_checked);
 	}
@@ -53,19 +56,19 @@ function alreadyBin_devnoidChecked(err, s) {
 function alreadyBin_binOpened(err, fd) {
 	if (err) {
 		console.error(err);
-		process.exit(1);
+		process.exit(2);
 	} else {
 		write(fd, "#!/bin/bash\nexport NODE_ENV=development\nnode ./node_modules/jsnoid/jsnoid.js\n", null, null, (err, written, str) => {
 			if (err) {
 				console.error('Error writing ./bin/devnoid');
 				console.error(err);
-				process.exit(1);
+				process.exit(3);
 			} else {
 				close(fd, (err) => {
 					if (err) {
 						console.error('Error closing ./bin/devnoid');
 						console.error(err);
-						process.exit(1);
+						process.exit(4);
 					} else {
 						console.log('File created.');
 						process.exit(0);
@@ -77,13 +80,9 @@ function alreadyBin_binOpened(err, fd) {
 }
 
 
-function alreadyDevBin(doit) {
-	if (doit) {
-		
-	} else {
-		
-	}
-}
 
-	if (dev)
-		alreadyBin();
+if (dev)
+	// checks if ./bin/devnoid already exists
+	alreadyBin();
+
+console.log(process.argv);
