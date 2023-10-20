@@ -12,7 +12,7 @@
     "url": "git+https://github.com/arkanoid/jsnoid.git"
   },
   "author": "André Bertelli Araújo",
-  "license": "ISC",
+    "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/arkanoid/jsnoid/issues"
   },

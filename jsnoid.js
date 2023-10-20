@@ -4,7 +4,7 @@ const dev = (process.env.NODE_ENV === 'development');
 
 import { stat, realpath, mkdir, open, write, close } from 'node:fs';
 
-import jsnoid from 'jsnoid';
+import * as jsnoid from 'jsnoid';
 
 
 // Checks if ./bin exists
