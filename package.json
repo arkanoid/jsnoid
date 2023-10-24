@@ -1,7 +1,7 @@
 {
   "name": "jsnoid",
-  "version": "0.2",
-  "description": "Lazy javascript framework for Express web development",
+  "version": "0.3",
+  "description": "Lazy javascript framework for Express/Bootstrap/Knex web development",
 	"main": "index.js",
 	"type": "module",
   "scripts": {
