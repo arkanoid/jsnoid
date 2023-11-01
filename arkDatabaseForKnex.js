@@ -1,4 +1,5 @@
-const debug = require('debug')('ark:db');
+import { makeDebug } from './smallfuncs.js';
+const debug = makeDebug('ark:db');
 
 export class arkBaseDBClass {
     /**
@@ -69,8 +70,9 @@ export class arkBaseDBClass {
      * Adjusts a set of data before sending to Knex/Ajax.
      * @param {array} row Each field inside <row> is converted as appropriated (parseInt() for number, etc.)
      */
-    adjustData(row, datadict) {
+    adjustData(row) {
         let r = {};
+		let datadict = this.dictionary;
 
         //for (var i in this.fields) {
 		//datadict.forEach((f, i) => {
@@ -121,9 +123,9 @@ export class arkBaseDBClass {
 	 * Inserts a new record into the database.
 	 * @param fields Object with values
 	 */
-	insert(fields, datadict) {
+	insert(fields) {
 		return this.knex(this.tableName).insert(
-			(datadict ? this.adjustData(fields, datadict) : fields)
+			(this.dictionary ? this.adjustData(fields) : fields)
 		);
 	}
 
@@ -132,15 +134,10 @@ export class arkBaseDBClass {
 	 * @param fields Object with values
 	 * @param where Where function
 	 */
-	update(fields, datadict, where) {
-		//return new Promise((resolve, reject) => {
-		//console.log(datadict ? this.adjustData(fields, datadict) : fields);
+	update(fields, where) {
 		return this.knex(this.tableName).update(
-			(datadict ? this.adjustData(fields, datadict) : fields)
+			(this.dictionary ? this.adjustData(fields) : fields)
 		).where(where)
-				//.then((r) => { resolve(r) })
-				//.catch((err) => { reject(new Error(err)) });
-		//})
 	}
 }
 

@@ -1,5 +1,5 @@
 # jsnoid
-Lazy javascript framework for Express web development.
+Lazy javascript framework for Express/Knex with Bootstrap web development.
 
 ## Disclaimer
 I've wrote this because I'm not a real developer and I'm lazy. You shouldn't be using this. If you are, you're lazy.
@@ -11,7 +11,7 @@ This is all intended for web development using Express and some Handlebars/Boots
 ## What is this I don't even
 This module consists mainly of three parts.
 
-*Database components*. These are in the arkDatabaseForKnex part. Classes for helping accessing database with Knex.
+*Database components*. These are in the arkDatabaseForKnex part. Classes for helping accessing database with Knex. Server side stuff.
 
 *GUI components*. These go in the arkComponents part. Classes for controlling client side stuff. They expect an existing HTML page made with Bootstrap stuff. I do use Handlebars also but it's not mandatory.
 

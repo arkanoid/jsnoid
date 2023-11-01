@@ -7,6 +7,13 @@
   "scripts": {
     "test": "node --test"
   },
+	"exports": {
+		".": "./index.js",
+		"./ObjectNoid", "./ObjectNoid.js",
+		"./Components", "./arkComponents.js",
+		"./DatabaseForKnex", "./arkDatabaseForKnex.js",
+		"./smallfuncs", "./smallfuncs.js"
+	},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/arkanoid/jsnoid.git"

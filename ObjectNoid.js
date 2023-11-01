@@ -1,6 +1,6 @@
 import { readFileSync, stat, open, write, close } from 'node:fs';
-import debugM from 'debug';
-const debug = debugM('jsnoid:objectnoid');
+import { makeDebug } from './smallfuncs.js';
+const debug = makeDebug('noid:object');
 
 export default class ObjectNoid {
 	#name;
@@ -19,11 +19,11 @@ export default class ObjectNoid {
 
 		let filepath = base || `./noid/${name}.json`;
 		// test if json already exists
-		debug('filepath', filepath);
+		debug(() => { return `filepath ${filepath}` });
 		stat(filepath, (err, s) => {
 			if (err) {
 				// checking parameter combos
-				debug(`name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`);
+				debug(() => { return `name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`});
 				if (origin == 'data' && datatype == '/') {
 					datatype = 'map';
 				}
@@ -44,8 +44,8 @@ export default class ObjectNoid {
 						break;
 					}
 				}
-				debug(`name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`);
-				debug(this.data);
+				debug(() => { return `name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`});
+				debug(() => { return this.data });
 
 				this.#origin = origin;
 				this.#originDatatype = datatype;
@@ -53,7 +53,7 @@ export default class ObjectNoid {
 
 				this.#createJson(filepath);
 			} else {
-				debug('constructor, call loadJson', filepath);
+				debug(() => { return `constructor, call loadJson ${filepath}`});
 				this.loadJson(filepath);
 			}
 		});
@@ -74,14 +74,14 @@ export default class ObjectNoid {
 		if (this.#origin == 'data') {
 			if (this.#originDatatype == 'map') {
 				filecontents.data = {};
-				debug('this.data', this.data);
+				debug(() => { return 'this.data' + this.data });
 				this.data.forEach((value, key) => {
 					filecontents.data[key] = value;
 				});
 			} else
 				filecontents.data = this.data;
 		}
-		debug(filecontents);
+		debug(() => { return filecontents });
 
 		open(filepath, 'w', 0o640, (err, fd) => {
 			if (err) {
@@ -89,7 +89,7 @@ export default class ObjectNoid {
 				process.exit(12);
 			} else {
 				let content = JSON.stringify(filecontents);
-				debug(content);
+				debug(() => { return content });
 				write(fd, content, null, null, (err, written, str) => {
 					if (err) {
 						console.error(`Error writing ${filepath}`);
@@ -112,7 +112,7 @@ export default class ObjectNoid {
 	
 	loadJson(filepath) {
 		let jdata = JSON.parse(readFileSync(filepath, 'utf8'));
-		debug('loadJson', jdata);
+		debug(() => { return 'loadJson' + jdata });
 		this.#origin = jdata.origin;
 		this.#originDatatype = jdata.datatype;
 		this.#originMode = jdata.mode;
@@ -133,7 +133,7 @@ export default class ObjectNoid {
 	 * Currently works for origin:data and datatype:map
 	 */
 	addData(newdata, datatype) {
-		debug('addData this.#origin', this.#origin, 'this.#originDatatype', this.#originDatatype);
+		debug(() => { return `addData this.#origin ${this.#origin} this.#originDatatype ${this.#originDatatype}`});
 		if (this.#origin == 'data' && this.#originDatatype == 'map') {
 			switch (datatype) {
 			case 'map':
