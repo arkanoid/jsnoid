@@ -95,11 +95,11 @@ if (!dev) {
 
 
 /*
- * At this point, we guaranteed that ./bin/devnoid exists.
+ * At this point, we guaranteed that ./noid/devnoid exists.
  */
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
-import ObjectNoid from './ObjectNoid.js';
+import { makeNoidJoinUs } from './ObjectNoid.js';
 
 if (process.argv.length == 2)
 	process.argv.push('--help');
@@ -115,11 +115,9 @@ yargs(hideBin(process.argv))
 	}, (argv) => {
 		if (argv.objectname) {
 			console.log(`Listing ObjectNoid:${argv.objectname}`);
-			let O = new ObjectNoid(argv.objectname);
-			console.log('jsnoid, new ON is', O.data);
-			//O.addData({ teste: 'testando', valor: 213 }, 'object');
 		} else {
-			console.log('Listing all ObjectNoid names:');
+			if (argv.verbose)
+				console.log('Listing all ObjectNoid names:');
 			readdir('./noid/', (err, files) => {
 				let noids = listDirNoid(err, files);
 				noids.forEach(f => {
@@ -128,38 +126,39 @@ yargs(hideBin(process.argv))
 			});
 		}
 	})
-	.command('create [objectname] [origin] [datatype] [mode]', 'Create a new ObjectNoid.', (yargs) => {
+	.command('create [name] [subclass]', 'Create a new ObjectNoid subclass, extending one of the existing subclasses.', (yargs) => {
 		return yargs
-			.positional('objectname', {
-				describe: 'Name for the new ObjectNoid. A file named <objectname>.json will be created inside ./noid/ directory',
-				default: 'defaults'
+			.positional('name', {
+				describe: 'Name for the new ObjectNoid. A file named <name>.js will be created inside ./noid/ directory'
 			})
-			.positional('origin', {
-				describe: `Where the data comes from. Options:\n`
-					+ `restful: AJAX query. URL should be stated in [data] parameter.\n`
-					+ `noid: Another ObjectNoid. Object name should be stated in [data] parameter.\n`
-					+ `data: Random data.`,
-				default: 'data'
-			})
-			.positional('datatype', {
-				describe:  `Parameter for [origin]. What it means for every value of [origin]:\n`
-					+ `restful: URL.\n`
-					+ `noid: Another ObjectNoid name No default, this *must* be specified.`
-					+ `\ndata: string, name of some structured data ('Array', 'Object', 'Map', etc.). Default is map.`,
-				default: '/'
-			})
-			.positional('mode', {
-				describe: 'For restful origin, \'single\' or \'several\'; just one record or an array of them. Unused for other origins.',
-				default: 'several'
+			.positional('subclass', {
+				describe:  `Which subclass of ObjectNoid.\n`
+					+ `NoidDB: Represents a database table, with options to add Express routes, create views with forms and Bootstrap components. All in one object.\n`
+					+ `NoidDBRecord: A single record meant to be used together with NoidDB.\n`
+					+ `NoidJoinUs: creates a noid that's a normal class but also keep track of every instance created.`
 			})
 	}, (argv) => {
 		try {
+			if (!argv?.name && !argv?.subclass) {
+				console.info('Add --help for options.');
+				process.exit(0);
+			}
 			if (argv.verbose)
-				console.info(`Creating ObjectNoid on: /noid/${argv.objectname}.json`)
+				console.info(`Creating ${argv.subclass} on: /noid/${argv.name}.js`)
 
-			let O = new ObjectNoid(argv.objectname, null, argv.origin, argv.datatype, argv.mode);
+			switch(argv.subclass.toLowerCase()) {
+			case 'noiddb':
+				createFileNoid(`${argv.name}.js`, makeNoidDB(argv.name));
+				break;
+			case 'noiddbrecord':
+				createFileNoid(`${argv.name}.js`, makeNoidDBRecord(argv.name));
+				break;
+			case 'noidjoinus':
+				createFileNoid(`${argv.name}.js`, makeNoidJoinUs(argv.name));
+				break;
+			}
 			
-			console.log(`Object ${argv.objectname} created.`);
+			console.log(`Noid ${argv.name} created.`);
 		} catch(e) {
 			console.error(e);
 		}
@@ -175,21 +174,45 @@ yargs(hideBin(process.argv))
 
 
 /**
- * Returns list of all .noid files received in the argument list.
+ * Returns list of all .js files received in the argument list.
  * @param	{Array}	files	List received by node:fs.readdir
- * @return	{Array}	List of ObjectNoid names (file names inside /noid directory, without the .json suffix)
+ * @return	{Array}	List of ObjectNoid names (file names inside /noid directory, without the .js suffix)
  */
 function listDirNoid(err, files) {
 	if (err) {
-		console.log('Error consulting /noid directory for .json files (readdir)');
+		console.log('Error consulting /noid directory for .js files (readdir)');
 		console.error(err);
 		process.exit(2);
 	} else {
 		let noids = [];
 		files.forEach(f => {
-			if (f.length > 5 && f.substr(f.length - 5) == '.json')
-				noids.push(f.substr(0, f.length - 5));
+			if (f.length > 3 && f.substr(f.length - 3) == '.js')
+				noids.push(f.substr(0, f.length - 3));
 		});
 		return noids;
 	}
+}
+
+function createFileNoid(filename, contents) {
+	open('./noid/' + filename, 'w', 0o640, (err, fd) => {
+		if (err) {
+			console.error(err);
+			process.exit(10);
+		} else
+			write(fd, contents, null, null, (err, written, str) => {
+				if (err) {
+					console.error('Error writing ./noid/' + filename);
+					console.error(err);
+					process.exit(11);
+				} else
+					close(fd, (err) => {
+						if (err) {
+							console.error('Error closing ./noid/' + filename);
+							console.error(err);
+							process.exit(12);
+						} else
+							return;
+					});
+			});
+	});
 }

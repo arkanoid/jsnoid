@@ -1,156 +1,132 @@
 import { readFileSync, stat, open, write, close } from 'node:fs';
 import { makeDebug } from './smallfuncs.js';
 const debug = makeDebug('noid:object');
+import { arkDataDictionary } from './arkDatabaseForKnex.js';
 
-export default class ObjectNoid {
+export class ObjectNameExists extends Error {
+	constructor(...args) {
+		super(...args);
+	}
+}
+
+export class ObjectNoid {
 	#name;
-	#origin;
-	#originDatatype;
-	#originMode;
-	data;
+	#internalCollections;
+	#collectionNames;
 	
 	/**
 	 * @param name	{String}	Case sensitive name
 	 * @param base	{String}	Optional, if present it's the full path of a json file. If not the first parameter will be used as ./noid/<name>.json
 	 * @param origin	{String}	Optional, only used if object is being created for the first time. Otherwise it will be loaded from the already existing .json file.
 	 */
-	constructor(name, base, origin, datatype, mode) {
+	constructor(name) {
 		this.#name = name;
 
-		let filepath = base || `./noid/${name}.json`;
-		// test if json already exists
-		debug(() => { return `filepath ${filepath}` });
-		stat(filepath, (err, s) => {
-			if (err) {
-				// checking parameter combos
-				debug(() => { return `name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`});
-				if (origin == 'data' && datatype == '/') {
-					datatype = 'map';
-				}
-				if (origin == 'data') {
-					let origin_datatype = ['array', 'object', 'map'];
-					if (origin_datatype.indexOf(datatype.toLowerCase()) < 0) {
-						throw new Error('ObjectNoid: when origin is data, datatype must be one of: ' + origin_datatype.join(', '));
-					}
-					switch (datatype.toLowerCase()) {
-					case 'array':
-						this.data = [];
-						break;
-					case 'object':
-						this.data = {};
-						break;
-					default:
-						this.data = new Map();
-						break;
-					}
-				}
-				debug(() => { return `name ${name} base ${base} origin ${origin} datatype ${datatype} mode ${mode}`});
-				debug(() => { return this.data });
-
-				this.#origin = origin;
-				this.#originDatatype = datatype;
-				this.#originMode = mode;
-
-				this.#createJson(filepath);
-			} else {
-				debug(() => { return `constructor, call loadJson ${filepath}`});
-				this.loadJson(filepath);
-			}
-		});
+		this.#internalCollections = {};
+		this.#collectionNames = [];
 	}
 
 	/**
-	 * Creates the .json file inside /noid/
+	 * Produces a 'random sample' of this object, for test purposes.
 	 */
-	#createJson(filepath) {
-		if (!filepath)
-			filepath = `./noid/${this.#name}.json`;
-		
-		let filecontents = {
-			origin: this.#origin,
-			datatype: this.#originDatatype,
-			mode: this.#originMode
-		};
-		if (this.#origin == 'data') {
-			if (this.#originDatatype == 'map') {
-				filecontents.data = {};
-				debug(() => { return 'this.data' + this.data });
-				this.data.forEach((value, key) => {
-					filecontents.data[key] = value;
-				});
-			} else
-				filecontents.data = this.data;
-		}
-		debug(() => { return filecontents });
-
-		open(filepath, 'w', 0o640, (err, fd) => {
-			if (err) {
-				console.error(err);
-				process.exit(12);
-			} else {
-				let content = JSON.stringify(filecontents);
-				debug(() => { return content });
-				write(fd, content, null, null, (err, written, str) => {
-					if (err) {
-						console.error(`Error writing ${filepath}`);
-						console.error(err);
-						process.exit(13);
-					} else {
-						close(fd, (err) => {
-							if (err) {
-								console.error(`Error closing ${filepath}`);
-								console.error(err);
-								process.exit(14);
-							} else
-								this.loadJson(filepath);
-						});
-					}
-				});
-			}
-		});
-	}
-	
-	loadJson(filepath) {
-		let jdata = JSON.parse(readFileSync(filepath, 'utf8'));
-		debug(() => { return 'loadJson' + jdata });
-		this.#origin = jdata.origin;
-		this.#originDatatype = jdata.datatype;
-		this.#originMode = jdata.mode;
-
-		if (jdata.origin == 'data') {
-			if (jdata.datatype == 'map') {
-				this.data = new Map();
-				for (i in jdata.data)
-					this.data.set(i, jdata.data[i]);
-			} else
-				this.data = jdata.data;
-		}
-		
-		return this;
-	}
-
-	/**
-	 * Currently works for origin:data and datatype:map
-	 */
-	addData(newdata, datatype) {
-		debug(() => { return `addData this.#origin ${this.#origin} this.#originDatatype ${this.#originDatatype}`});
-		if (this.#origin == 'data' && this.#originDatatype == 'map') {
-			switch (datatype) {
-			case 'map':
-				newdata.forEach((value, key) => {
-					this.data.set(key, value);
-				});
-				break;
-			case 'object':
-				for (i in newdata)
-					this.data.set(i, newdata[i]);
-			}
-		}
-		this.#createJson();
+	#sample(options) {
+		return new ObjectNoid('ON' + Math.ceil(Math.random() * 10000));
 	}
 	
 	name() {
 		return this.#name;
 	}
 
+	/**
+	 * @param {string}	colname	Collection name. Will be created inside this.#internalCollections. The name 'data' is suggested for the default.
+	 * @param {string}	coltype	Collection type. One of these: Array, Map, Set, Object. Case-insensitive.
+	 */
+	createCollection(colname, coltype) {
+		if (this.#internalCollections[colname])
+			throw new ObjectNameExists(`Collection named ${colname} already exists in ObjectNoid ${this.#name}`);
+
+		switch(coltype.toLowerCase()) {
+		case 'array':
+			this.#internalCollections[colname] = [];
+			break;
+		case 'map':
+			this.#internalCollections[colname] = new Map();
+			break;
+		case 'set':
+			this.#internalCollections[colname] = new Set();
+			break;
+		case 'object':
+			this.#internalCollections[colname] = {};
+			break;
+		}
+	}
+
+	addCollectionRule() {
+	}
+}
+
+
+/**
+ * Keeps track of every object created by one of the subclasses.
+ * @param {string}	name	Name of the object.
+ * @param {string}	subclassname	Name of the subclass. Subclasses made by jsnoid will already be created with the proper configuration.
+ */
+const NoidJoinUs_list = new Map();
+export class NoidJoinUs extends ObjectNoid {
+	#subClassName;
+	
+	constructor(name, subclassname) {
+		super(name);
+
+		if (NoidJoinUs_list.has(subclassname)) {
+			let sub = NoidJoinUs_list.get(subclassname);
+			if (sub.has(name))
+				throw new ObjectNameExists(name, subclassname);
+		} else {
+			NoidJoinUs_list.set(subclassname, new Map());
+		}
+
+		let sub = NoidJoinUs_list.get(subclassname);
+		sub.set(name, this);
+		this.#subClassName = subclassname;
+	}
+
+	/**
+	 * @return {Map} List of all objects created of the indicated subclass.
+	 */
+	static us(subname) {
+		if (!subname)
+			subname = this.#subClassName;
+		return NoidJoinUs_list.get(subname);
+	}
+}
+
+export function makeNoidJoinUs(name) {
+	return `import { NoidJoinUs } from 'jsnoid/ObjectNoid';\n\n`
+		+ `export default class ${name} extends NoidJoinUs {\n`
+		+ `\tconstructor(name) {\n`
+		+ `\t\tsuper(name, '${name}');\n\n`
+		+ `\t}\n\n`
+		+ `static us() { return super.us('${name}'); }\n\n`;
+		+ `}\n`;
+}
+
+
+/**
+ * Represents a database table, with options to add Express routes, create views with forms and Bootstrap components. All in one object.
+ * @param {string}	name	Object name, may be the same as the table name, but that's not mandatory.
+ * @param {object}	datadictParams	Same parameter names for arkDataDictionary class (arkDatabaseForKnex.js). If tableName is not specified, the first parameter <name> will be used.
+ */
+export class NoidDB extends ObjectNoid {
+	#datadict;
+	
+	constructor(name, datadictParams) {
+		super(name);
+
+		if (datadictParams) {
+			if (!datadictParams.tableName)
+				datadictParams.tableName = name;
+		}
+		this.#datadict = arkDataDictionary(datadictParams.tableName, datadictParams.fields, datadictParams.primaryKeys, datadictParams.simpleList);
+	}
 }

@@ -572,9 +572,12 @@ export class arkFormCare {
 			let row = this.options.BSDataLoad.getRecord();
 			for (let r in row) {
 				let el = $(`#${this.name}_${r}`);
-				if (el)
-					el.val(row[r]);
-				else
+				if (el) {
+					if (Array.isArray(row[r]))
+						el.val( JSON.stringify(row[r]) );
+					else
+						el.val(row[r]);
+				} else
 					console.log(`populateForm() not found: #${this.name}_${r}`);
 			}
 		}
@@ -617,7 +620,10 @@ export class arkFormCare {
 
 		this.oldStatus = this.status;
 		this.status = 'sending';
-		//console.log(values);
+
+		console.log(`ajax ${this.options.urlNew} ` + (this.oldStatus == 'new' ? 'POST' : 'PUT'));
+		console.log(values);
+
 		$.ajax({
 			url: this.options.urlNew,
 			method: (this.oldStatus == 'new' ? 'POST' : 'PUT'),

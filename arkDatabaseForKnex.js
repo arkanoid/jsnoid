@@ -42,9 +42,12 @@ export class arkBaseDBClass {
     }
 
 
-    /*
-     * List @fields based on clause @where ordered by @order.
+    /**
+     * List <fields> based on clause <where> ordered by <order>.
      * All parameters are optional. Default will list the entire table.
+	 * @param {array}			fields	Optional, list of field names.
+	 * @param {object|array}	where	Optional, will be passed to Knex .where()
+	 * @param {object}			order	Optional, will be passed to Knex .orderBy()
      */
     list(fields, where, order) {
 		return new Promise((resolve, reject) => {
@@ -65,18 +68,58 @@ export class arkBaseDBClass {
 		});
     }
     
+	/**
+     * Same as list() but with more possible WHERE clauses.
+	 * @param {array}	fields	Optional, list of field names.
+	 * @param {object}	where	Optional, can have the following keys: where, whereILike, whereRaw
+	 * @param {object}	order	Optional, will be passed to Knex .orderBy()
+	 * Examples for the <where> parameter:
+	 *	{ whereILike: { name: '%Smith%' } }
+	 *	{ whereRaw: `json_search(s.tags, "one", "${tag}") is not null` }
+	 *	{ where: { id: 9, class_id: 101 }, whereILike: { name: '%thing%' } }
+     */
+	listWithWhereClauses(fields, whereClauses, order) {
+		return new Promise((resolve, reject) => {
+			let f = fields || this.dictionary.fieldsForSelect();
 
+			let q = this.knex.select(f).from(this.tableName);
+
+			try {
+				if (whereClauses) {
+					if (whereClauses.where) {
+						//debugSQL('whereClauses.where', whereClauses.where);
+						for (let w in whereClauses.where)
+							q = q.where(w, whereClauses.where[w]);
+					}
+					if (whereClauses.whereILike) {
+						//debugSQL('whereClauses.whereILike', whereClauses.whereILike);
+						for (let w in whereClauses.whereILike)
+							q = q.whereILike(w, whereClauses.whereILike[w]);
+					}
+					if (whereClauses.whereRaw) {
+						//debugSQL('whereClauses.whereRaw', whereClauses.whereRaw);
+						q = q.whereRaw(whereClauses.whereRaw);
+					}
+					//debugSQL(q.toString());
+				}
+			} catch(e) {
+				console.error('jsnoid/DatabaseForKnex listWithWhereClauses', e);
+			}
+			
+			q.then((rows) => { resolve(rows); })
+				.catch((err) => { reject(new Error(err)); });
+		});
+	}
+
+	
     /**
      * Adjusts a set of data before sending to Knex/Ajax.
      * @param {array} row Each field inside <row> is converted as appropriated (parseInt() for number, etc.)
      */
-    adjustData(row) {
+    /*adjustData(row) {
         let r = {};
 		let datadict = this.dictionary;
 
-        //for (var i in this.fields) {
-		//datadict.forEach((f, i) => {
-		//row.forEach((f, i) => {
 		for (let i in row) {
             if (datadict[i]) {
                 switch (datadict[i].type) {
@@ -117,7 +160,8 @@ export class arkBaseDBClass {
         }
 		return r;
 	}
-
+	*/
+	
 
 	/**
 	 * Inserts a new record into the database.
@@ -125,7 +169,7 @@ export class arkBaseDBClass {
 	 */
 	insert(fields) {
 		return this.knex(this.tableName).insert(
-			(this.dictionary ? this.adjustData(fields) : fields)
+			(this.dictionary ? this.dictionary.adjustRowForDatabase(fields) : fields)
 		);
 	}
 
@@ -135,8 +179,10 @@ export class arkBaseDBClass {
 	 * @param where Where function
 	 */
 	update(fields, where) {
+		debug(() => { return 'arkBaseDBClass.update' + fields + where });
+
 		return this.knex(this.tableName).update(
-			(this.dictionary ? this.adjustData(fields) : fields)
+			(this.dictionary ? this.dictionary.adjustRowForDatabase(fields) : fields)
 		).where(where)
 	}
 }
@@ -151,12 +197,15 @@ export class arkDataDictionary {
 	/**
 	 * @param {String}	tableName Name of the SQL table
 	 * @param {Array}	List of fields. Each item can be just a string (field name and nothing more) or an object with more data about the field.
+	 *					Expected object format: { name, type }
+	 *					name Should be the same name of the database field.
+	 *					type One of those: string, number, json
 	 * @param {Array|String}	primaryKeys (optional) Will be passed to the setPrimaryKeys() method.
 	 * @param {Array|String}	simpleList (optional) Will be passed to the setSimpleList() method.
 	 */
 	constructor(tableName, fields, primaryKeys, simpleList) {
 		this.#tableName = tableName;
-		this.#fields = {};
+		this.#fields = new Map;
 		this.primaryKeys = [];
 		this.simpleList = [];
 
@@ -167,7 +216,7 @@ export class arkDataDictionary {
 			else
 				f = arkDataDictionary.newField(o);
 
-			this.#fields[f.name] = f;
+			this.#fields.set(f.name, f);
 
 			if (f.primaryKey)
 				this.primaryKeys.push(f.name);
@@ -206,13 +255,17 @@ export class arkDataDictionary {
 		
 		this.primaryKeys = prKeysFields;
 
-		for (i in this.#fields)
-			this.#fields[i].primaryKey = false;
+		for (const [key, value] in this.#fields) {
+			value.primaryKey = false;
+			this.#fields.set(key, value);
+		}
 		
 		this.primaryKeys.forEach((o) => {
-			if (!this.#fields[o])
+			if (!this.#fields.get(o))
 				throw new Error(`${o}? That's no moon!`);
-			this.#fields[o].primaryKey = true;
+			let value = this.#fields.get(o);
+			value.primaryKey = true;
+			this.#fields.set(o, value);
 		});
 	}
 
@@ -227,13 +280,17 @@ export class arkDataDictionary {
 		
 		this.simpleList = simpleList;
 		
-		for (i in this.#fields)
-			this.#fields[i].list = false;
+		for (const [key, value] in this.#fields) {
+			value.list = false;
+			this.#fields.set(key, value);
+		}
 		
 		this.simpleList.forEach((o) => {
-			if (!this.#fields[o])
+			let value = this.#fields.get(o);
+			if (!value)
 				throw new Error(`Play it again, ${o}`);
-			this.#fields[o].simpleList = true;
+			value.simpleList = true;
+			this.#fields.set(o, value);
 		});
 	}
 
@@ -248,7 +305,54 @@ export class arkDataDictionary {
 
 		if (!k.list)
 			f.list = false;
+
+		if (!k.type)
+			f.type = 'string';
 		
 		return f;
 	}
+
+	/**
+	 * Receives a row of data and adjusts (converts) every field type according to dictionary definitions.
+	 */
+	adjustRowForDatabase(row) {
+		for (let k in row)
+			row[k] = this.adjustFieldForDatabase(row[k], k);
+		return row;
+	}
+
+	/**
+	 * Receives a value and adjusts (converts) it according to dictionary definition of field.
+	 */
+	adjustFieldForDatabase(value, fieldname) {
+		let result;
+		if (typeof value != this.#fields.get(fieldname).type)
+			switch (this.#fields.get(fieldname).type) {
+			case 'string':
+				result = value.toString();
+				break;
+			case 'number':
+				let n = parseInt(value);
+				if (isNaN(n))
+					throw new Error(`arkDictionary ${this.#tableName} field ${fieldname} should be a number: ${value}`);
+				result = n;
+				break;
+			case 'json':
+				if (typeof value == 'object')
+					result = JSON.stringify(value);
+				else
+					result = value;
+				break;
+			default:
+				result = value;
+			}
+		else if (typeof value == 'object')
+			result = JSON.stringify(value);
+		else
+			result = value;
+
+		return result;
+	}
+
+	
 }
