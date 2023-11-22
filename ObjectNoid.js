@@ -11,6 +11,7 @@ export class ObjectNameExists extends Error {
 
 export class ObjectNoid {
 	#name;
+	#noidType;
 	#internalCollections;
 	#collectionNames;
 	
@@ -21,20 +22,25 @@ export class ObjectNoid {
 	 */
 	constructor(name) {
 		this.#name = name;
+		this.#noidType = 'ObjectNoid';
 
 		this.#internalCollections = {};
-		this.#collectionNames = [];
+		//this.#collectionNames = [];
 	}
 
 	/**
 	 * Produces a 'random sample' of this object, for test purposes.
 	 */
-	#sample(options) {
+	static sample(options) {
 		return new ObjectNoid('ON' + Math.ceil(Math.random() * 10000));
 	}
 	
-	name() {
+	get name() {
 		return this.#name;
+	}
+
+	get noidType() {
+		return this.#noidType;
 	}
 
 	/**
@@ -77,6 +83,7 @@ export class NoidJoinUs extends ObjectNoid {
 	
 	constructor(name, subclassname) {
 		super(name);
+		this.#noidType = 'NoidJoinUs';
 
 		if (NoidJoinUs_list.has(subclassname)) {
 			let sub = NoidJoinUs_list.get(subclassname);
@@ -114,19 +121,32 @@ export function makeNoidJoinUs(name) {
 
 /**
  * Represents a database table, with options to add Express routes, create views with forms and Bootstrap components. All in one object.
- * @param {string}	name	Object name, may be the same as the table name, but that's not mandatory.
- * @param {object}	datadictParams	Same parameter names for arkDataDictionary class (arkDatabaseForKnex.js). If tableName is not specified, the first parameter <name> will be used.
+ * @param {string}	Object name, may be the same as the table name, but that's not mandatory.
+ * @param {arkDataDictionary}	Defined in jsnoid/DatabaseForKnex.
  */
 export class NoidDB extends ObjectNoid {
 	#datadict;
 	
-	constructor(name, datadictParams) {
+	constructor(name, datadict) {
 		super(name);
+		this.#noidType = 'NoidDB';
 
-		if (datadictParams) {
-			if (!datadictParams.tableName)
-				datadictParams.tableName = name;
-		}
-		this.#datadict = arkDataDictionary(datadictParams.tableName, datadictParams.fields, datadictParams.primaryKeys, datadictParams.simpleList);
+		this.#datadict = datadict;
 	}
+
+	get datadict() {
+		return this.#datadict;
+	}
+}
+
+
+export function makeNoidDB(name) {
+	return `import { NoidDB } from 'jsnoid/ObjectNoid';\nimport { arkDataDictionary } fom 'jsnoid/DatabaseForKnex';\n\n`
+		+ `const datadict${name}\n= new arkDataDictionary('${name}', {\n`
+		+ `\tfield1: 'increments',\n\tfield2: 'integer',\n\tfield3: ['string', 32]\n\t}, 'field1' );\n\n`
+		+ `export default class ${name} extends NoidDB {\n`
+		+ `\tconstructor(name) {\n`
+		+ `\t\tsuper(name, datadict${name});\n\n`
+		+ `\t}\n`
+		+ `}\n`;
 }
