@@ -1,5 +1,5 @@
-import { makeDebug } from './smallfuncs.js';
-const debug = makeDebug('ark:db');
+//import { makeDebug } from './smallfuncs.js';
+//const debug = makeDebug('ark:db');
 
 export class arkBaseDBClass {
     /**
@@ -137,20 +137,47 @@ export class arkBaseDBClass {
 	}
 }
 
+const arkDBTypes = {
+	increments: { jstype: 'number', params: 0 },
+	integer: { jstype: 'number', params: 0 },
+	bigInteger: { jstype: 'number', params: 0 },
+	tinyint: { jstype: 'number', params: 0 },
+	smallint: { jstype: 'number', params: 0 },
+	mediumint: { jstype: 'number', params: 0 },
+	bigint: { jstype: 'number', params: 0 },
+	text: { jstype: 'string', params: 0 },
+	string: { jstype: 'number', params: 1 },
+	"float": { jstype: 'number', params: 2 },
+	"double": { jstype: 'number', params: 2 },
+	"boolean": { jstype: 'boolean', params: 0 },
+	date: { jstype: 'Date', params: 0 },
+	datetime: { jstype: 'Date', params: 0 },
+	timestamp: { jstype: 'Date', params: 0 },
+	binary: { jstype: 'Uint8Array', params: 1 },
+	"enum": { jstype: 'string', params: -1 },
+	json: { jstype: 'json', params: 0 },
+	jsonb: { jstype: 'json', params: 0 },
+	uuid: { jstype: 'string', params: 0 }
+};
+
 const _arkDataDictionaries = new Map();
 
 export class arkDataDictionary {
 	#tableName;
 	#fields;
-	primaryKeys;
+	#primaryKeys;
 	simpleList;
 	#options;
 	
 	/**
 	 * @param {string}	Name of the SQL table
 	 * @param {array|object}	List of fields. When an array, each item can be just a string (field name and nothing more) or an object with more data about the field.
-	 *					Expected object format: { name, type } - name: Should be the same name of the database field. type: One of those: string, number, json, timestamp
-	 *					If an object, keys are field names and values are the types as defined above. Example: { id: 'number', name: 'string', age: 'number' }
+	 *					If an object, keys are field names and values are the types as defined above. Basic example: { id: 'integer', name: 'string', age: 'smallint' }. The type can also be an array with the type and more parameters.
+	 *					Acceptable types and the formats they can be presented, separated by semicolon:
+	 *					'increments'; 'integer'; 'bigInteger'; 'tinyint'; 'smallint'; 'mediumint'; 'bigint'; 
+	 *					'text'; [ 'string', <length> ]; [ 'float', <precision>, <scale> ]; [ 'double', <precision>, <scale> ];
+	 *					'boolean'; 'date'; 'datetime'; 'timestamp'; [ 'binary', <length> ];
+	 *					[ 'enum', [ 'value1', ... ] ]; 'json'; 'jsonb'; 'uuid'
 	 * @param {array|string}	(optional) Will be passed to the setPrimaryKeys() method.
 	 * @param {array|string}	(optional) Will be passed to the setSimpleList() method.
 	 * @param {object}			(optional) List of options, listed below:
@@ -162,7 +189,7 @@ export class arkDataDictionary {
 	constructor(tableName, fields, primaryKeys, simpleList, options) {
 		this.#tableName = tableName;
 		this.#fields = {};
-		this.primaryKeys = [];
+		this.#primaryKeys = [];
 		this.simpleList = simpleList || [];
 
 		if (Array.isArray(fields))
@@ -177,7 +204,7 @@ export class arkDataDictionary {
 				this.#fields[f.name] = f;
 
 				if (f.primaryKey)
-					this.primaryKeys.push(f.name);
+					this.#primaryKeys.push(f.name);
 
 				if (f.list)
 					this.simpleList.push(f.name);
@@ -306,7 +333,7 @@ export class arkDataDictionary {
 	 * Define which fields are primary keys.
 	 * @param {Array|String}	pks If the primary key is a single field only, it can be passed as string, otherwise as Array.
 	 */
-	setPrimaryKeys(pks) {
+	set primaryKeys(pks) {
 		let prKeysFields;
 		if (typeof pks == 'string')
 			prKeysFields = [pks];
@@ -316,7 +343,7 @@ export class arkDataDictionary {
 		if (!Array.isArray(prKeysFields))
 			throw new Error("It's full of stars, and they names are:", prKeysFields);
 		
-		this.primaryKeys = prKeysFields;
+		this.#primaryKeys = prKeysFields;
 
 		/*for (const [key, value] in this.#fields) {
 			value.primaryKey = false;
@@ -325,7 +352,7 @@ export class arkDataDictionary {
 		for (const key in this.#fields)
 			this.#fields[key].primaryKey = false;
 		
-		this.primaryKeys.forEach((o) => {
+		this.#primaryKeys.forEach((o) => {
 			if (!this.#fields[o])
 				throw new Error(`${o}? That's no moon!`);
 			/*let value = this.#fields.get(o);
@@ -333,6 +360,10 @@ export class arkDataDictionary {
 			this.#fields.set(o, value);*/
 			this.#fields[o].primaryKey = true;
 		});
+	}
+
+	get primaryKeys() {
+		return this.#primaryKeys;
 	}
 
 	/**
@@ -428,5 +459,8 @@ export class arkDataDictionary {
 		return result;
 	}
 
+	get tableName() {
+		return this.#tableName;
+	}
 	
 }

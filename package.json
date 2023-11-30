@@ -25,7 +25,9 @@
   },
   "homepage": "https://github.com/arkanoid/jsnoid#readme",
   "devDependencies": {
-    "edit-json-file": "^1.7.0",
     "jsdoc-to-markdown": "^8.0.0"
+  },
+  "dependencies": {
+    "edit-json-file": "^1.7.0"
   }
 }

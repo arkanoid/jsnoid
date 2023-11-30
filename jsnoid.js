@@ -99,7 +99,7 @@ if (!dev) {
  */
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
-import { makeNoidJoinUs } from './ObjectNoid.js';
+import { makeNoidJoinUs, makeNoidDB } from './ObjectNoid.js';
 
 if (process.argv.length == 2)
 	process.argv.push('--help');
@@ -133,8 +133,7 @@ yargs(hideBin(process.argv))
 			})
 			.positional('subclass', {
 				describe:  `Which subclass of ObjectNoid.\n`
-					+ `NoidDB: Represents a database table, with options to add Express routes, create views with forms and Bootstrap components. All in one object.\n`
-					+ `NoidDBRecord: A single record meant to be used together with NoidDB.\n`
+					+ `NoidDB: Represents a database table, with options to add Express routes, create views with forms and Bootstrap components. All in one object. (two files will be created)\n`
 					+ `NoidJoinUs: creates a noid that's a normal class but also keep track of every instance created.`
 			})
 	}, (argv) => {
@@ -148,17 +147,22 @@ yargs(hideBin(process.argv))
 
 			switch(argv.subclass.toLowerCase()) {
 			case 'noiddb':
-				createFileNoid(`${argv.name}.js`, makeNoidDB(argv.name));
+				let files = makeNoidDB(argv.name);
+				createFileNoid(`cs${argv.name}.js`, files[0]);
+				createFileNoid(`${argv.name}.js`, files[1]);
+				console.log(`Noids created: cs${argv.name} and ${argv.name}. Please review the files and edit them as appropriate.`);
 				break;
 			case 'noiddbrecord':
 				createFileNoid(`${argv.name}.js`, makeNoidDBRecord(argv.name));
+				console.log(`Noid ${argv.name} created. Please review the file and edit as appropriate.`);
 				break;
 			case 'noidjoinus':
 				createFileNoid(`${argv.name}.js`, makeNoidJoinUs(argv.name));
+				console.log(`Noid ${argv.name} created. Please review the file and edit as appropriate.`);
 				break;
 			}
 			
-			console.log(`Noid ${argv.name} created.`);
+			generateIndex();
 		} catch(e) {
 			console.error(e);
 		}
@@ -186,8 +190,11 @@ function listDirNoid(err, files) {
 	} else {
 		let noids = [];
 		files.forEach(f => {
-			if (f.length > 3 && f.substr(f.length - 3) == '.js')
-				noids.push(f.substr(0, f.length - 3));
+			if (f.length > 3 && f.substr(f.length - 3) == '.js') {
+				let name = f.substr(0, f.length - 3);
+				if (name != 'index')
+					noids.push(name);
+			}
 		});
 		return noids;
 	}
@@ -214,5 +221,33 @@ function createFileNoid(filename, contents) {
 							return;
 					});
 			});
+	});
+}
+
+function generateIndex() {
+	readdir('./noid/', (err, files) => {
+		let noids = listDirNoid(err, files);
+		let header = '';
+		noids.forEach(f => {
+			header += `import ${f} from './${f}.js';\n`;
+		});
+		createFileNoid('index.js', header +
+					   'const listNoids = [ ' + noids.join(', ') + ` ];\n` +
+					   `import editJsonFile from 'edit-json-file';
+const file = editJsonFile('index.json');
+const indexNoid = file.get();
+
+console.log('index noid');
+console.log(indexNoid);
+`)
+
+		stat('./index.json', (err, s) => {
+			if (err) {
+				createFileNoid('index.json', `{
+	"devAdminUrl": "/randomname"
+}`);
+				console.log('File ./noid/index.json created for the first time. Please edit this file and change the default values as appropriate.');
+			} 
+		});
 	});
 }
