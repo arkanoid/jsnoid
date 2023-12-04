@@ -148,9 +148,9 @@ yargs(hideBin(process.argv))
 			switch(argv.subclass.toLowerCase()) {
 			case 'noiddb':
 				let files = makeNoidDB(argv.name);
-				createFileNoid(`cs${argv.name}.js`, files[0]);
-				createFileNoid(`${argv.name}.js`, files[1]);
-				console.log(`Noids created: cs${argv.name} and ${argv.name}. Please review the files and edit them as appropriate.`);
+				for (let k in files)
+					createFileNoid(k, files[k]);
+				console.log('Noid' + (Object(files).keys().length > 1 ? 's' : '') + ' created: ' + Object(files).keys().join(', ') + '. Please review the files and edit them as appropriate.');
 				break;
 			case 'noiddbrecord':
 				createFileNoid(`${argv.name}.js`, makeNoidDBRecord(argv.name));
@@ -179,6 +179,9 @@ yargs(hideBin(process.argv))
 
 /**
  * Returns list of all .js files received in the argument list.
+ * Files inside /noid/ directory finishing with '.js' will not be counted if:
+ * - Name starts with '.' (to avoid temporary files being edited)
+ * - Name ends with '_cs.js' (these are client-side files for corresponding NoidDB files)
  * @param	{Array}	files	List received by node:fs.readdir
  * @return	{Array}	List of ObjectNoid names (file names inside /noid directory, without the .js suffix)
  */
@@ -192,7 +195,7 @@ function listDirNoid(err, files) {
 		files.forEach(f => {
 			if (f.length > 3 && f.substr(f.length - 3) == '.js') {
 				let name = f.substr(0, f.length - 3);
-				if (name != 'index')
+				if (name != 'index' && name.substr(0, 1) != '.' && name.substr(name.length - 6) == '_cs.js')
 					noids.push(name);
 			}
 		});
@@ -234,7 +237,7 @@ function generateIndex() {
 		createFileNoid('index.js', header +
 					   'const listNoids = [ ' + noids.join(', ') + ` ];\n` +
 					   `import editJsonFile from 'edit-json-file';
-const file = editJsonFile('index.json');
+export const file = editJsonFile('index.json');
 const indexNoid = file.get();
 
 console.log('index noid');

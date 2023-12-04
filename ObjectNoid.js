@@ -219,9 +219,11 @@ export class NoidDB extends NoidExpress {
 	}
 
 	get(fields, where, callback) {
+		let k;
+		
 		if (!this.#DB)
-			let k = this.knex;
-
+			k = this.knex;
+			
 		let row = this.#DB.findFirst(where, fields, callback); // fields and where switch places
 		this.#rawRecords = [ row ];
 		let rec = new this.#recordClass(row);
@@ -230,12 +232,14 @@ export class NoidDB extends NoidExpress {
 	}
 
 	get record() {
-		return this.#record[0];
+		return this.#records[0];
 	}
 	
 	list(fields, where, order) {
+		let k;
+		
 		if (!this.#DB)
-			let k = this.knex;
+			k = this.knex;
 
 		this.#rawRecords = this.#DB.list(fields, where, order);
 		this.#records = this.#rawRecords.map(r => { return new this.#recordClass(r); });
@@ -247,8 +251,10 @@ export class NoidDB extends NoidExpress {
 	}
 
 	listWithWhereClauses(fields, whereClauses, order) {
+		let k;
+		
 		if (!this.#DB)
-			let k = this.knex;
+			k = this.knex;
 
 		return this.#DB.listWithWhereClauses(fields, whereClauses, order);
 	}
@@ -271,7 +277,7 @@ export class NoidDB extends NoidExpress {
  * @param {string}	Object name, may be the same as the table name, but that's not mandatory.
  * @param {arkDataDictionary}	Defined in jsnoid/DatabaseForKnex.
  * @param {class}	Class used for creating a record. Inherited from ObjectNoid.
- * @param {string|object}	String: URL to call with Ajax (GET) and obtain data. Object: also data for an Ajax call, in this format: { url: '...', method: 'POST' /* or GET */ }
+ * @param {string|object}	String: URL to call with Ajax (GET) and obtain data. Object: also data for an Ajax call, in this format: { url: '...', method: 'POST' } (method: POST, GET)
  *		
  */
 export class NoidDataSource extends ObjectNoid {
@@ -291,7 +297,7 @@ export class NoidDataSource extends ObjectNoid {
 	}
 
 	get record() {
-		return this.#record[0];
+		return this.#records[0];
 	}
 
 	get records() {
@@ -326,8 +332,7 @@ export class NoidRecord extends ObjectNoid {
  * Returns two files. First one is client side, the other server side
  */
 export function makeNoidDB(name) {
-	return [
-		`// NOTE: import the classes here with: import { datadict${name}, ${name}, DS${name} } from 'noid/cs${name}.js'
+	return { `${name}_cs.js`: `// NOTE: import the classes here with: import { datadict${name}, ${name}, DS${name} } from 'noid/${name}_cs.js'
 // (DS${name} strictly only needed on client side)
 
 import { arkDataDictionary } from 'jsnoid/DatabaseForKnex';
@@ -335,6 +340,7 @@ import { NoidDataSource } from 'jsnoid/ObjectNoid';
 
 // NOTE: Edit the data dictionary below.
 // Creation/change of database schema isn't done by this. You must create/alter the database table either by hand, knex migrations, or any othr method, but jsnoid won't replicate changes made here to the database and vice-versa.
+// There are more parameters than what is shown here; check the documentation of the arkDataDictionary class at https://github.com/arkanoid/jsnoid/blob/main/DatabaseForKnex.md#constructor-tablename-fields-primarykeys-simplelist-options
 export const datadict${name} =
 new arkDataDictionary('${name}', {
 	id: 'increments',
@@ -361,7 +367,7 @@ new arkDataDictionary('${name}', {
 );
 
 // NOTE: adapt this class to fit your Record. Methods from it can be used in client side too (.toString(), etc)
-export ${name} extends NoidRecord {
+export class ${name} extends NoidRecord {
 	static datadict = datadict${name};
 }
 
@@ -377,10 +383,10 @@ export class DS${name} extends NoidDataSource {
 	}
 }
 `,
-`// NOTE: import the classes here with: import DB${name} from 'noid/${name}.js'
+`${name}.js`: `// NOTE: import the classes here with: import DB${name} from 'noid/${name}.js'
 
 import { NoidDB } from 'jsnoid/ObjectNoid';
-import { datadict${name}, ${name} } from './cs${name}.js';
+import { datadict${name}, ${name} } from './${name}_cs.js';
 
 // NOTE: adapt this class to your needs; DB queries, Express routes
 export default class DB${name} extends NoidDB {
@@ -392,5 +398,5 @@ export default class DB${name} extends NoidDB {
 	set record(r) {
 		this.setRecord(r, datadict${name});
 	}
-}` ];
+}` };
 }

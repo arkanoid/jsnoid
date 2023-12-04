@@ -166,7 +166,7 @@ export class arkDataDictionary {
 	#tableName;
 	#fields;
 	#primaryKeys;
-	simpleList;
+	#simpleList;
 	#options;
 	
 	/**
@@ -178,8 +178,8 @@ export class arkDataDictionary {
 	 *					'text'; [ 'string', <length> ]; [ 'float', <precision>, <scale> ]; [ 'double', <precision>, <scale> ];
 	 *					'boolean'; 'date'; 'datetime'; 'timestamp'; [ 'binary', <length> ];
 	 *					[ 'enum', [ 'value1', ... ] ]; 'json'; 'jsonb'; 'uuid'
-	 * @param {array|string}	(optional) Will be passed to the setPrimaryKeys() method.
-	 * @param {array|string}	(optional) Will be passed to the setSimpleList() method.
+	 * @param {array|string}	(optional) Will be passed to the (set) primaryKeys() method.
+	 * @param {array|string}	(optional) Will be passed to the (set) simpleList() method.
 	 * @param {object}			(optional) List of options, listed below:
 	 *			alias {string}	Alias for tableName. Used when joining other tables.
 	 *			joins {array}	List of available joins. Each one is an object as below:
@@ -190,7 +190,7 @@ export class arkDataDictionary {
 		this.#tableName = tableName;
 		this.#fields = {};
 		this.#primaryKeys = [];
-		this.simpleList = simpleList || [];
+		this.#simpleList = simpleList || [];
 
 		if (Array.isArray(fields))
 			fields.forEach(o => {
@@ -207,7 +207,7 @@ export class arkDataDictionary {
 					this.#primaryKeys.push(f.name);
 
 				if (f.list)
-					this.simpleList.push(f.name);
+					this.#simpleList.push(f.name);
 			});
 		else {
 			for (let key in fields)
@@ -331,7 +331,7 @@ export class arkDataDictionary {
 
 	/**
 	 * Define which fields are primary keys.
-	 * @param {Array|String}	pks If the primary key is a single field only, it can be passed as string, otherwise as Array.
+	 * @param {Array|String}	If the primary key is a single field only, it can be passed as string, otherwise as Array.
 	 */
 	set primaryKeys(pks) {
 		let prKeysFields;
@@ -371,11 +371,11 @@ export class arkDataDictionary {
 	 * Define this list if there are fields in your table that aren't usually queried.
 	 * @param {Array}	simpleList
 	 */
-	setSimpleList(simpleList) {
+	set simpleList(simpleList) {
 		if (!Array.isArray(simpleList))
 			throw new Error("These are not cats:", simpleList);
 		
-		this.simpleList = simpleList;
+		this.#simpleList = simpleList;
 		
 		/*for (const [key, value] in this.#fields) {
 			value.list = false;
@@ -384,7 +384,7 @@ export class arkDataDictionary {
 		for (const key in this.#fields)
 			this.#fields[key].simpleList = false;
 		
-		this.simpleList.forEach((o) => {
+		this.#simpleList.forEach((o) => {
 			let value = this.#fields[o];
 			if (!value)
 				throw new Error(`Play it again, ${o}`);
@@ -392,6 +392,10 @@ export class arkDataDictionary {
 			  this.#fields.set(o, value);*/
 			this.#fields[o].simpleList = true;
 		});
+	}
+
+	get simpleList() {
+		return this.#simpleList;
 	}
 
 	static newField(f) {
